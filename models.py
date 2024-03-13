@@ -145,7 +145,7 @@ class CosmologicalModel(object):
         
         z_cmb = np.interp(self.t_cmb, self.t, self.z_t)
         self.r_d = theta_BAO_CMB.to_value(u.radian) * self.angular_diameter_distance(z_cmb) * (1 + z_cmb)
-        print(z_cmb, self.r_d.to_value(u.Mpc))
+        #print(z_cmb, self.r_d.to_value(u.Mpc))
 
 
     def fit_mu(self, z, mu, err_mu):
