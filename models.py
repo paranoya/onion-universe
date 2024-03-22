@@ -148,21 +148,57 @@ class CosmologicalModel(object):
         #print(z_cmb, self.r_d.to_value(u.Mpc))
 
 
+    def compute_chi2(self, model, z, data, err_data):
+        if err_data.ndim == 2:
+            errors = np.nanmean(err_data, axis=0)
+        else:
+            errors = err_data
+        #print(err_data, errors, err_data.ndim)
+        #model = function(z)
+        chi2 = np.nanmean(((data - model)/errors)**2)
+        #best_norm = np.sum((data*model)/err_data**2) / (np.sum((model/err_data)**2))
+        #posterior_error = 1/np.sum((1/err_mu)**2)
+        #best_norm = np.sum((mu-mu_model)/err_mu**2) * posterior_error
+        #print(f'chi2 = {chi2:.4g}, best_norm = {best_norm:.4g}')
+        return chi2
+    
     def fit_mu(self, z, mu, err_mu):
-        mu_model = 5*np.log10(self.luminosity_distance(z)/10/u.pc)
-        
-        posterior_error = 1/np.sum((1/err_mu)**2)
-        best_norm = np.sum((mu-mu_model)/err_mu**2) * posterior_error
-        chi2 = np.mean(((mu-mu_model-best_norm)/err_mu)**2)
-        best_H0 = self.H0 / 10**(best_norm/5)
-        print(f'chi2 = {chi2:.4g}, best_norm = {best_norm:.4g} H0 = {best_H0.to_value(u.km/u.s/u.Mpc):.4g} km/s/Mpc [{3e5/10**((best_norm+z.size*posterior_error)/5):.6g}, {3e5/10**((best_norm-z.size*posterior_error)/5):.6g}]')
+        model = 5*np.log10(self.luminosity_distance(z)/10/u.pc).to_value(u.dimensionless_unscaled)        
+        return self.compute_chi2(model, z, mu, err_mu)
 
+    def fit_DA(self, z, DA, err_DA):
+        model = self.angular_diameter_distance(z).to_value(u.Mpc)
+        return self.compute_chi2(model, z, DA, err_DA)
 
+    def fit_DA_rd(self, z, DA_rd, err_DA_rd):
+        model = self.angular_diameter_distance(z) / self.r_d
+        return self.compute_chi2(model, z, DA_rd, err_DA_rd)
+
+    def fit_H(self, z, H, err_H):
+        model = self.H(z).to_value(u.km/u.s/u.Mpc)
+        return self.compute_chi2(model, z, H, err_H)
+
+    def fit_DH_rd(self, z, DH_rd, err_DH_rd):
+        model = c.c/self.H(z) / self.r_d
+        return self.compute_chi2(model, z, DH_rd, err_DH_rd)
+    
+    def DV(self, z):
+        DA = self.angular_diameter_distance(z)
+        DH = c.c * z / self.H(z)
+        return np.power((1+z)**2 * DA**2 * DH, 1/3)
+
+    def fit_DV_rd(self, z, DV_rd, err_DV_rd):
+        model = self.DV(z) / self.r_d
+        return self.compute_chi2(model, z, DV_rd, err_DV_rd)
+    
+    def fit_rd_DV(self, z, rd_DV, err_rd_DV):
+        model = self.r_d / self.DV(z)
+        return self.compute_chi2(model, z, rd_DV, err_rd_DV)
+    
     def fit_theta_BAO(self, z, theta, err_theta):
-        theta_model = (self.r_d / self.angular_diameter_distance(z) * u.rad).to_value(u.deg)
-        best_norm = np.sum((theta*theta_model)/err_theta**2) / (np.sum((theta_model/err_theta)**2))
-        chi2 = np.mean(((theta - theta_model)/err_theta)**2)
-        print(f'chi2 = {chi2:.4g}, best_norm = {best_norm:.4g}')
+        model = (self.r_d / self.angular_diameter_distance(z) * u.rad).to_value(u.deg)
+        return self.compute_chi2(model, z, theta, err_theta)
+
         
 # -----------------------------------------------------------------------------
 
@@ -194,7 +230,15 @@ class FlatLCDM(StandardModel):
 class Coasting(CosmologicalModel):
 
     @u.quantity_input
-    def __init__(self, Ok, H0, Tcmb0, Neff, Ob0, Y=0.24, eta=6e-10, theta_BAO_CMB:u.radian=0.01041*u.radian):
+    def __init__(self,
+                 Ok:u.dimensionless_unscaled,
+                 H0:1/u.s,
+                 Tcmb0:u.K=cosmo.Planck18.Tcmb0,
+                 Neff:u.dimensionless_unscaled=cosmo.Planck18.Neff,
+                 Ob0:u.dimensionless_unscaled=cosmo.Planck18.Ob0,
+                 Y:u.dimensionless_unscaled=0.24,
+                 eta:u.dimensionless_unscaled=6e-10,
+                 theta_BAO_CMB:u.radian=0.01041*u.radian):
 
         # Present time
         #print('t0', (1/H0).to_value(u.Gyr), 'Gyr')
@@ -245,9 +289,9 @@ class Coasting(CosmologicalModel):
 # -----------------------------------------------------------------------------
 
 
-#flcdm = FlatLCDM(Ol0=cosmo.Planck18.Ode0, H0=cosmo.Planck18.H0)
-flcdm = FlatLCDM(Ol0=.65, H0=62*u.km/u.s/u.Mpc)
-coasting = Coasting(Ok=-.052, H0=72*u.km/u.s/u.Mpc, Tcmb0=cosmo.Planck18.Tcmb0, Neff=cosmo.Planck18.Neff, Ob0=cosmo.Planck18.Ob0)
+p18 = FlatLCDM(Ol0=cosmo.Planck18.Ode0, H0=cosmo.Planck18.H0)
+flcdm = FlatLCDM(Ol0=0.7, H0=72*u.km/u.s/u.Mpc)
+coasting = Coasting(Ok=-.05, H0=70*u.km/u.s/u.Mpc, Tcmb0=cosmo.Planck18.Tcmb0, Neff=cosmo.Planck18.Neff, Ob0=cosmo.Planck18.Ob0)
 
 # %%
 # -----------------------------------------------------------------------------
