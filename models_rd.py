@@ -1,3 +1,4 @@
+
 import numpy as np
 #import scipy
 from scipy.special import zeta
@@ -11,7 +12,6 @@ from astropy import constants as c
 
 class CosmologicalModel(object):
     
-    @u.quantity_input
     def __init__(self,
                  Ode0:u.dimensionless_unscaled,
                  Om0:u.dimensionless_unscaled,
@@ -25,8 +25,7 @@ class CosmologicalModel(object):
                  Ode_t:u.dimensionless_unscaled,
                  Om_t:u.dimensionless_unscaled,
                  Ogamma_t:u.dimensionless_unscaled,
-                 
-                 theta_BAO_CMB:u.radian,
+                 r_d:u.Mpc,
                 ):
         
         # present time
@@ -57,7 +56,7 @@ class CosmologicalModel(object):
         
         # BAO scale
         
-        self.init_BAO(theta_BAO_CMB)
+        self.r_d = r_d
         
         
     def Ode(self, z):
@@ -142,13 +141,6 @@ class CosmologicalModel(object):
         self.t_cmb = np.min(self.t[t_coll_t > self.t])
         
         
-    def init_BAO(self, theta_BAO_CMB):
-        
-        z_cmb = np.interp(self.t_cmb, self.t, self.z_t)
-        self.r_d = theta_BAO_CMB.to_value(u.radian) * self.angular_diameter_distance(z_cmb) * (1 + z_cmb)
-        #print(z_cmb, self.r_d.to_value(u.Mpc))
-
-
     def compute_chi2(self, model, z, data, err_data):
         if err_data.ndim == 2:
             errors = np.nanmean(err_data, axis=0)
@@ -171,15 +163,15 @@ class CosmologicalModel(object):
             for j in range(N):
                 chi2 += (data[i] - model[i]) * inv_cov_matrix[i,j] * (data[j] - model[j])
         return chi2/N
-
+    
     def fit_mu(self, z, mu, err_mu):
         model = 5*np.log10(self.luminosity_distance(z)/10/u.pc).to_value(u.dimensionless_unscaled)        
         return self.compute_chi2(model, z, mu, err_mu)
-
+    
     def fit_complete_mu(self, z, mu, covar_mu):
         model = 5*np.log10(self.luminosity_distance(z)/10/u.pc).to_value(u.dimensionless_unscaled)        
         return self.compute_complete_chi2(model, z, mu, covar_mu)
-    
+
     def fit_DA(self, z, DA, err_DA):
         model = self.angular_diameter_distance(z).to_value(u.Mpc)
         return self.compute_chi2(model, z, DA, err_DA)
@@ -213,46 +205,44 @@ class CosmologicalModel(object):
         model = (self.r_d / self.angular_diameter_distance(z) * u.rad).to_value(u.deg)
         return self.compute_chi2(model, z, theta, err_theta)
 
-        
+
+
 # -----------------------------------------------------------------------------
 
 
 class StandardModel(CosmologicalModel):
 
-    @u.quantity_input
     def __init__(self, model,
-                 theta_BAO_CMB:u.radian=0.01041*u.radian,
+                 r_d:u.Mpc,
                  Y:u.dimensionless_unscaled=0.24):
         z = np.logspace(-5, 3.99, 1001)[::-1]
         super().__init__(model.Ode0, model.Om0, model.Ob0, Y, model.Ogamma0, model.Neff,
                          model.age(z), z, model.Ode(z), model.Om(z), model.Ogamma(z),
-                         theta_BAO_CMB)
+                         r_d)
 
 class FlatLCDM(StandardModel):
 
-    @u.quantity_input
     def __init__(self,
                  Ol0:u.dimensionless_unscaled,
                  H0:1/u.s,
-                 theta_BAO_CMB:u.radian=0.01041*u.radian):
+                 r_d:u.Mpc):
         model = cosmo.FlatLambdaCDM(H0, 1-Ol0, Tcmb0=cosmo.Planck18.Tcmb0, Ob0=cosmo.Planck18.Ob0)
-        super().__init__(model, theta_BAO_CMB)
+        super().__init__(model, r_d)
 
 # -----------------------------------------------------------------------------
 
 
 class Coasting(CosmologicalModel):
 
-    @u.quantity_input
     def __init__(self,
                  Ok:u.dimensionless_unscaled,
                  H0:1/u.s,
+                 r_d:u.Mpc,
                  Tcmb0:u.K=cosmo.Planck18.Tcmb0,
                  Neff:u.dimensionless_unscaled=cosmo.Planck18.Neff,
                  Ob0:u.dimensionless_unscaled=cosmo.Planck18.Ob0,
                  Y:u.dimensionless_unscaled=0.24,
-                 eta:u.dimensionless_unscaled=6e-10,
-                 theta_BAO_CMB:u.radian=0.01041*u.radian):
+                 eta:u.dimensionless_unscaled=6e-10,):
 
         # Present time
         #print('t0', (1/H0).to_value(u.Gyr), 'Gyr')
@@ -298,16 +288,10 @@ class Coasting(CosmologicalModel):
 
         super().__init__(2*Or0+Om0, Om0, Ob0, Y, Ogamma0, Neff,
                          t, z, Ode, Om, Or/(1+neutrinos),
-                         theta_BAO_CMB)
+                         r_d)
 
 # -----------------------------------------------------------------------------
 
 
-p18 = FlatLCDM(Ol0=cosmo.Planck18.Ode0, H0=cosmo.Planck18.H0)
-flcdm = FlatLCDM(Ol0=0.7, H0=72*u.km/u.s/u.Mpc)
-coasting = Coasting(Ok=-.05, H0=70*u.km/u.s/u.Mpc, Tcmb0=cosmo.Planck18.Tcmb0, Neff=cosmo.Planck18.Neff, Ob0=cosmo.Planck18.Ob0)
-
-# %%
-# -----------------------------------------------------------------------------
-#                                                    ... Paranoy@ Rulz! ;^D
-# -----------------------------------------------------------------------------
+flcdm = FlatLCDM(Ol0=cosmo.Planck18.Ode0, H0=cosmo.Planck18.H0, r_d=140*u.Mpc)
+coasting = Coasting(Ok=-.05, H0=70*u.km/u.s/u.Mpc, r_d=140*u.Mpc, Tcmb0=cosmo.Planck18.Tcmb0, Neff=cosmo.Planck18.Neff, Ob0=cosmo.Planck18.Ob0)

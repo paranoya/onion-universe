@@ -1,6 +1,7 @@
 # Output
 figures/
 sandbox/
+data/countourplots_BIGGRID/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
