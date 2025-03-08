@@ -1,7 +1,13 @@
 # Output
 figures/
 sandbox/
-data/countourplots_BIGGRID/
+data/contourplots_BIGGRID/dep_26_16/
+data/contourplots_BIGGRID/dep_36_36/
+data/contourplots_BIGGRID/dep_36_36_46/
+data/contourplots_BIGGRID/dep/
+data/contourplots_BIGGRID/indep_36/
+data/contourplots_BIGGRID/indep_36_36_46/
+data/contourplots_BIGGRID/indep/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
