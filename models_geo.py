@@ -138,6 +138,15 @@ class CosmologicalModelGeometrical(object):
 
 # -----------------------------------------------------------------------------
 
+class StandardModel(CosmologicalModelGeometrical):
+
+    def __init__(self, model,
+                 r_d:u.Mpc,
+                 ):
+        z = np.logspace(-5, 3.99, 1001)[::-1]
+        super().__init__(model.Ode0, model.age(z), z, r_d) 
+
+
 class FlatLCDM(StandardModel):
 
     def __init__(self,
@@ -149,47 +158,25 @@ class FlatLCDM(StandardModel):
 
 # --------------------------------------------------
 # ---------------------------
-class OnionModel(CosmologicalModelGeometrical)
+class OnionModel(CosmologicalModelGeometrical):
     def __init__(self,
                  Ok:u.dimensionless_unscaled,
                  H0:1/u.s,
                  r_d:u.Mpc,
                  k_st:u.dimensionless_unscaled,      #Generalized spacetime curvature to distinguish between onion models
                 ):
-
+        z_models = np.logspace(-5, 3.99, 1001)[::-1]
         if np.abs(k_st) < 1e-6:
-            
+            R0 = c.c / H0
+            t = R0/c.c * (1+z_models)**-1
+        elif k_st > 0:
+            T = np.sqrt((1/H0**2)/(Ok - 1))
+            t = T * np.asin(np.sqrt(1+1/Ok)/(1+z_models))
+        else:
+            T = np.sqrt((1/H0**2)/(Ok + 1))
+            t = T * np.asinh(np.sqrt(-1-1/Ok)/(1+z_models))
 
-
-
-
-class Coasting(CosmologicalModel):
-
-    def __init__(self,
-                 Ok:u.dimensionless_unscaled,
-                 H0:1/u.s,
-                 r_d:u.Mpc,
-                ):
-
-
-
-
-        # Evolution
-
-        mu = mu0 * np.hstack((.5*np.logspace(-4, -1e-4, 1001),
-                              (1 - .5*np.logspace(-6, -1e-4, 1001))[::-1]))    
-
-
-
-        z = t0_teq / t_teq - 1
-        t = 1/H0 / (1+z)
-
-        Or = (1 - Ok) / (3 + 2 * mu)
-        Om = (1 - Ok) * mu / (3 + 2 * mu)
-        Ob = Ob0/Om0 * Om
-        Ode = 2*Or + Om
-
-        super().__init__(Ok, t, z, r_d)
+        super().__init__(Ok, t, z_models, r_d)
 
 # -----------------------------------------------------------------------------
 
