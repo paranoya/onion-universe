@@ -171,10 +171,10 @@ class OnionModel(CosmologicalModelGeometrical):
             t = R0/c.c * (1+z_models)**-1
         elif k_st > 0:
             T = np.sqrt((1/H0**2)/(Ok - 1))
-            t = T * np.asin(np.sqrt(1+1/Ok)/(1+z_models))
+            t = T * np.arcsin(np.sqrt(1+1/Ok)/(1+z_models))
         else:
             T = np.sqrt((1/H0**2)/(Ok + 1))
-            t = T * np.asinh(np.sqrt(-1-1/Ok)/(1+z_models))
+            t = T * np.arcsinh(np.sqrt(-1-1/Ok)/(1+z_models))
 
         super().__init__(Ok, t, z_models, r_d)
 
