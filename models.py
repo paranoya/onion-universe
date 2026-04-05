@@ -162,10 +162,23 @@ class CosmologicalModel(object):
         #print(f'chi2 = {chi2:.4g}, best_norm = {best_norm:.4g}')
         return chi2
     
+    def compute_complete_chi2(self, model, z, data, cov_matrix):
+        N=len(data)
+        chi2=0
+        inv_cov_matrix = np.linalg.inv(cov_matrix)
+        for i in range(N):
+            for j in range(N):
+                chi2 += (data[i] - model[i]) * inv_cov_matrix[i,j] * (data[j] - model[j])
+        return chi2/N
+
     def fit_mu(self, z, mu, err_mu):
         model = 5*np.log10(self.luminosity_distance(z)/10/u.pc).to_value(u.dimensionless_unscaled)        
         return self.compute_chi2(model, z, mu, err_mu)
 
+    def fit_complete_mu(self, z, mu, covar_mu):
+        model = 5*np.log10(self.luminosity_distance(z)/10/u.pc).to_value(u.dimensionless_unscaled)        
+        return self.compute_complete_chi2(model, z, mu, covar_mu)
+    
     def fit_DA(self, z, DA, err_DA):
         model = self.angular_diameter_distance(z).to_value(u.Mpc)
         return self.compute_chi2(model, z, DA, err_DA)
